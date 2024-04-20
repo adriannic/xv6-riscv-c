@@ -332,6 +332,39 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   return -1;
 }
 
+// If from is greater than to, unmaps that section from the new pagetable.
+// Else it maps the entries of old in the range provided in the new pagetable.
+// Returns 0 if successful, -1 otherwise.
+// Undos the changes if an error occurs.
+int
+uvmclone(pagetable_t old, pagetable_t new, uint64 from, uint64 to)
+{
+  if (from > to) {
+    uvmunmap(new, PGROUNDUP(to), (PGROUNDUP(from) - PGROUNDUP(to)) / PGSIZE, 1);
+    return 0;
+  }
+
+  pte_t *pte;
+  uint64 pa, i;
+  uint flags;
+
+  for (i = PGROUNDUP(from); i < to; i += PGSIZE) {
+    if ((pte = walk(old, i, 0)) == 0)
+      panic("uvmclone: pte should exist");
+    if ((*pte & PTE_V) == 0)
+      panic("uvmclone: page not present");
+    pa = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte);
+    kclone(pa);
+    if (mappages(new, i, PGSIZE, pa, flags) != 0) {
+      kfree((void *)pa);
+      uvmunmap(new, PGROUNDUP(from), (i-PGROUNDUP(from)) / PGSIZE, 1);
+      return -1;
+    }
+  }
+  return 0;
+}
+
 // mark a PTE invalid for user access.
 // used by exec for the user stack guard page.
 void

@@ -123,6 +123,7 @@ allocproc(void)
 
 found:
   p->pid = allocpid();
+  p->tid = p->pid;
   p->state = USED;
 
   // Allocate a trapframe page.
@@ -163,6 +164,7 @@ freeproc(struct proc *p)
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
+  p->tid = 0;
   p->parent = 0;
   p->name[0] = 0;
   p->chan = 0;
@@ -323,6 +325,78 @@ fork(void)
   release(&np->lock);
 
   return pid;
+}
+
+// Create a new thread, copying the parent.
+// Child starts execution by calling the function passed.
+int
+clone(void)
+{
+  int i, tid;
+  struct proc *np;
+  struct proc *p = myproc();
+
+  // Allocate process.
+  if((np = allocproc()) == 0){
+    return -1;
+  }
+
+  // Clone user memory from parent to child.
+  if(uvmclone(p->pagetable, np->pagetable, 0, p->sz) < 0){
+    freeproc(np);
+    release(&np->lock);
+    return -1;
+  }
+
+  np->sz = p->sz;
+  np->pid = p->pid;
+
+  // copy saved user registers.
+  *(np->trapframe) = *(p->trapframe);
+
+  // Cause clone to return 0 in the child.
+  np->trapframe->a0 = 0;
+
+  // TODO: Allocate a page for the child's stack
+  pte_t *pte;
+  uint64 sp = np->trapframe->sp;
+  if ((pte = walk(np->pagetable, PGROUNDDOWN(sp), 0)) == 0)
+    panic("clone: stack pte should exist");
+  if ((*pte & PTE_V) == 0)
+    panic("clone: stack page not present");
+  uint64 pa = PTE2PA(*pte);
+  uint flags = PTE_FLAGS(*pte);
+  char *mem;
+  if ((mem = kalloc()) == 0) {
+    freeproc(np);
+    release(&np->lock);
+    return -1;
+  }
+  memmove(mem, (char *)pa, PGSIZE);
+  kfree((void *)pa);
+  *pte = PA2PTE(mem) | flags | PTE_V;
+
+  // increment reference counts on open file descriptors.
+  for(i = 0; i < NOFILE; i++)
+    if(p->ofile[i])
+      np->ofile[i] = filedup(p->ofile[i]);
+  np->cwd = idup(p->cwd);
+
+  safestrcpy(np->name, p->name, sizeof(p->name));
+
+  tid = np->tid;
+
+  release(&np->lock);
+
+  acquire(&wait_lock);
+  np->parent = p;
+  release(&wait_lock);
+
+  acquire(&np->lock);
+  np->state = RUNNABLE;
+  release(&np->lock);
+
+  return tid;
 }
 
 // Pass p's abandoned children to init.
