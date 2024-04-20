@@ -148,12 +148,13 @@ memcpy(void *dst, const void *src, uint n)
 
 int clone(int (*fn)(void *), void *args) {
   extern int _clone(void);
-  switch (_clone()) {
+  int tid = _clone();
+  switch (tid) {
   case 0:
     exit(fn(args));
   case -1:
     return -1;
   default:
-    return 0;
+    return tid;
   }
 }
