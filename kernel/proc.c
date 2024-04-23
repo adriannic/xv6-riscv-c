@@ -654,28 +654,30 @@ wakeup(void *chan)
   }
 }
 
-// Kill the thread with the given tid.
+// Kill the process with the given pid.
 // The victim won't exit until it tries to return
 // to user space (see usertrap() in trap.c).
-// TODO: replace passed pid to tid
 int
-kill(int tid)
+kill(int pid)
 {
   struct task *p;
+  int killed = 0;
 
   for(p = thread; p < &thread[NTASK]; p++){
     acquire(&p->thread_lock);
-    if(p->tid == tid){
+    if(p->pid == pid){
       p->killed = 1;
       if(p->state == SLEEPING){
         // Wake process from sleep().
         p->state = RUNNABLE;
       }
       release(&p->thread_lock);
-      return 0;
+      killed = 1;
     }
     release(&p->thread_lock);
   }
+  if (killed)
+    return 0;
   return -1;
 }
 
@@ -683,8 +685,21 @@ void
 setkilled(struct task *t)
 {
   acquire(&t->thread_lock);
-  t->killed = 1;
+  int pid = t->pid;
   release(&t->thread_lock);
+
+  for (struct task *p = thread; p < &thread[NTASK]; p++) {
+    acquire(&p->thread_lock);
+    if (p->pid == pid) {
+      p->killed = 1;
+      if (p->state == SLEEPING) {
+        // Wake process from sleep().
+        p->state = RUNNABLE;
+      }
+      release(&p->thread_lock);
+    }
+    release(&p->thread_lock);
+  }
 }
 
 int
