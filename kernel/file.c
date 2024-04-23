@@ -87,7 +87,7 @@ fileclose(struct file *f)
 int
 filestat(struct file *f, uint64 addr)
 {
-  struct proc *p = myproc();
+  struct task *p = mytask();
   struct stat st;
   
   if(f->type == FD_INODE || f->type == FD_DEVICE){
