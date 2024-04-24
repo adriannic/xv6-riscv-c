@@ -746,7 +746,6 @@ either_copyin(void *dst, int user_src, uint64 src, uint64 len)
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
-// TODO: print processes only
 void
 procdump(void)
 {
@@ -762,6 +761,7 @@ procdump(void)
   char *state;
 
   printf("\n");
+  printf("pid\ttid\tstate\tname\n");
   for(p = thread; p < &thread[NTASK]; p++){
     if(p->state == UNUSED)
       continue;
@@ -769,7 +769,6 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    printf("%d %s %s", p->pid, state, p->name);
-    printf("\n");
+    printf("%d\t%d\t%s\t%s\n", p->pid, p->tid, state, p->name);
   }
 }
