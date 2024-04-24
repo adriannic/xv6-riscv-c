@@ -8,6 +8,9 @@
 
 struct cpu cpus[NCPU];
 
+struct task *proc[NTASK];
+struct spinlock proc_lock;
+
 struct task thread[NTASK];
 
 struct task *initproc;
@@ -51,6 +54,7 @@ threadinit(void)
   
   initlock(&tid_lock, "nexttid");
   initlock(&wait_lock, "wait_lock");
+  initlock(&proc_lock, "proc_lock");
   for(p = thread; p < &thread[NTASK]; p++) {
       initlock(&p->thread_lock, "thread");
       p->state = UNUSED;
@@ -173,6 +177,42 @@ freetask(struct task *t)
   t->state = UNUSED;
 }
 
+// Finds an empty spot in the proc table and assigns this process to it. Returns
+// 0 if successful, -1 otherwise.
+static int
+allocproc(struct task *p) {
+  for (struct task **pe = proc; pe < &proc[NTASK]; pe++) {
+    if (*pe == 0) {
+      *pe = p;
+      return 0;
+    }
+  }
+  return -1;
+}
+
+// Frees the process entry in the proc table if it exists.
+// p->thread_lock must be held.
+static void
+freeproc(struct task *p) {
+  int pid = p->pid;
+  release(&p->thread_lock);
+  for (struct task **pe = proc; pe < &proc[NTASK]; pe++) {
+    if (*pe == 0)
+      continue;
+
+    struct task *pp = *pe;
+    acquire(&pp->thread_lock);
+    if (pp->pid == pid) {
+      release(&pp->thread_lock);
+      *pe = 0;
+      acquire(&p->thread_lock);
+      return;
+    }
+    release(&pp->thread_lock);
+  }
+  acquire(&p->thread_lock);
+}
+
 // Create a user page table for a given thread, with no user memory,
 // but with trampoline and trapframe pages.
 pagetable_t
@@ -237,6 +277,9 @@ userinit(void)
   struct task *t;
 
   t = alloctask();
+  if (allocproc(t) < 0)
+    panic("userinit: couldn't allocate a spot in the proc table for the init process");
+
   initproc = t;
   
   // allocate one user page and copy initcode's instructions
@@ -289,10 +332,17 @@ fork(void)
   if((np = alloctask()) == 0){
     return -1;
   }
+  // Allocate a spot in the proc table for child.
+  if (allocproc(np) < 0) {
+    freetask(np);
+    release(&np->thread_lock);
+    return -1;
+  }
 
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freetask(np);
+    freeproc(np);
     release(&np->thread_lock);
     return -1;
   }
@@ -415,6 +465,22 @@ reparent(struct task *t)
   }
 }
 
+static void
+killthreads(int pid)
+{
+  for (struct task *t = thread; t < &thread[NTASK]; t++) {
+    acquire(&t->thread_lock);
+    if (t->pid == pid && t->tid != pid) {
+      t->killed = 1;
+      if (t->state == SLEEPING) {
+        // Wake process from sleep().
+        t->state = RUNNABLE;
+      }
+    }
+    release(&t->thread_lock);
+  }
+}
+
 // Exit the current thread.  Does not return.
 // An exited thread remains in the zombie state
 // until its parent calls wait().
@@ -440,6 +506,14 @@ exit(int status)
   end_op();
   t->cwd = 0;
 
+  acquire(&t->thread_lock);
+  int is_proc = t->pid == t->tid;
+  release(&t->thread_lock);
+
+  // Kill child threads if t is a process.
+  if (is_proc)
+    killthreads(t->pid);
+
   acquire(&wait_lock);
 
   // Give any children to init.
@@ -452,6 +526,9 @@ exit(int status)
 
   t->xstate = status;
   t->state = ZOMBIE;
+  // Free spot in the proc table if t is a process.
+  if (is_proc)
+    freeproc(t);
 
   release(&wait_lock);
 
@@ -671,7 +748,6 @@ kill(int pid)
         // Wake process from sleep().
         p->state = RUNNABLE;
       }
-      release(&p->thread_lock);
       killed = 1;
     }
     release(&p->thread_lock);
@@ -688,17 +764,16 @@ setkilled(struct task *t)
   int pid = t->pid;
   release(&t->thread_lock);
 
-  for (struct task *p = thread; p < &thread[NTASK]; p++) {
-    acquire(&p->thread_lock);
-    if (p->pid == pid) {
-      p->killed = 1;
-      if (p->state == SLEEPING) {
+  for (struct task *tt = thread; tt < &thread[NTASK]; tt++) {
+    acquire(&tt->thread_lock);
+    if (tt->pid == pid) {
+      tt->killed = 1;
+      if (tt->state == SLEEPING) {
         // Wake process from sleep().
-        p->state = RUNNABLE;
+        tt->state = RUNNABLE;
       }
-      release(&p->thread_lock);
     }
-    release(&p->thread_lock);
+    release(&tt->thread_lock);
   }
 }
 
