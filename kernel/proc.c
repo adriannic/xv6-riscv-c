@@ -454,12 +454,14 @@ clone(void)
 void
 reparent(struct task *t)
 {
-  struct task *tt;
+  struct task *p;
 
-  for(tt = thread; tt < &thread[NTASK]; tt++){
-    if(tt->parent == t){
-      tt->parent = initproc;
-      tt->pid = initproc->pid;
+  for(p = thread; p < &thread[NTASK]; p++){
+    acquire(&p->thread_lock);
+    int is_proc = p->pid == p->tid;
+    release(&p->thread_lock);
+    if(is_proc && p->parent == t){
+      p->parent = initproc;
       wakeup(initproc);
     }
   }
