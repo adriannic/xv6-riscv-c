@@ -20,10 +20,10 @@ struct context {
 
 // Per-CPU state.
 struct cpu {
-  struct task *thread;        // The thread running on this cpu, or null.
-  struct context context;     // swtch() here to enter scheduler().
-  int noff;                   // Depth of push_off() nesting.
-  int intena;                 // Were interrupts enabled before push_off()?
+  struct task *thread;     // The thread running on this cpu, or null.
+  struct context context;  // swtch() here to enter scheduler().
+  int noff;                // Depth of push_off() nesting.
+  int intena;              // Were interrupts enabled before push_off()?
 };
 
 extern struct cpu cpus[NCPU];
@@ -41,11 +41,11 @@ extern struct cpu cpus[NCPU];
 // return-to-user path via usertrapret() doesn't return through
 // the entire kernel call stack.
 struct trapframe {
-  /*   0 */ uint64 kernel_satp;   // kernel page table
-  /*   8 */ uint64 kernel_sp;     // top of task's kernel stack
-  /*  16 */ uint64 kernel_trap;   // usertrap()
-  /*  24 */ uint64 epc;           // saved user program counter
-  /*  32 */ uint64 kernel_hartid; // saved kernel tp
+  /*   0 */ uint64 kernel_satp;    // kernel page table
+  /*   8 */ uint64 kernel_sp;      // top of task's kernel stack
+  /*  16 */ uint64 kernel_trap;    // usertrap()
+  /*  24 */ uint64 epc;            // saved user program counter
+  /*  32 */ uint64 kernel_hartid;  // saved kernel tp
   /*  40 */ uint64 ra;
   /*  48 */ uint64 sp;
   /*  56 */ uint64 gp;
@@ -86,23 +86,23 @@ struct task {
   struct spinlock thread_lock;
 
   // t->thread_lock must be held when using these:
-  enum taskstate state;        // Task state
-  void *chan;                  // If non-zero, sleeping on chan
-  int killed;                  // If non-zero, have been killed
-  int xstate;                  // Exit status to be returned to parent's wait
-  int pid;                     // Process ID
-  int tid;                     // Thread ID
+  enum taskstate state;  // Task state
+  void *chan;            // If non-zero, sleeping on chan
+  int killed;            // If non-zero, have been killed
+  int xstate;            // Exit status to be returned to parent's wait
+  int pid;               // Process ID
+  int tid;               // Thread ID
 
   // wait_lock must be held when using this:
-  struct task *parent;         // Parent task
+  struct task *parent;  // Parent task
 
   // these are private to the thread, so t->thread_lock need not be held.
-  uint64 kstack;               // Virtual address of kernel stack
-  uint64 sz;                   // Size of process memory (bytes)
-  pagetable_t pagetable;       // User page table
-  struct trapframe *trapframe; // data page for trampoline.S
-  struct context context;      // swtch() here to run process
-  struct file *ofile[NOFILE];  // Open files
-  struct inode *cwd;           // Current directory
-  char name[16];               // Thread name (debugging)
+  uint64 kstack;                // Virtual address of kernel stack
+  uint64 sz;                    // Size of process memory (bytes)
+  pagetable_t pagetable;        // User page table
+  struct trapframe *trapframe;  // data page for trampoline.S
+  struct context context;       // swtch() here to run process
+  struct file *ofile[NOFILE];   // Open files
+  struct inode *cwd;            // Current directory
+  char name[16];                // Thread name (debugging)
 };
