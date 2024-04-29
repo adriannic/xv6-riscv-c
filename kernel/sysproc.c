@@ -1,16 +1,12 @@
-#include "types.h"
-#include "riscv.h"
 #include "defs.h"
-#include "param.h"
-#include "memlayout.h"
-#include "spinlock.h"
 #include "proc.h"
+#include "types.h"
 
 uint64 sys_exit(void) {
   int n;
   argint(0, &n);
   exit(n);
-  return 0;  // not reached
+  return 0; // not reached
 }
 
 uint64 sys_getpid(void) { return mytask()->pid; }
@@ -29,7 +25,8 @@ uint64 sys_sbrk(void) {
 
   argint(0, &n);
   addr = mytask()->sz;
-  if (growproc(n) < 0) return -1;
+  if (growproc(n) < 0)
+    return -1;
   return addr;
 }
 

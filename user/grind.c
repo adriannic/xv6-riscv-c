@@ -2,15 +2,10 @@
 // run random system calls in parallel forever.
 //
 
-#include "kernel/param.h"
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "user/user.h"
-#include "kernel/fs.h"
-#include "kernel/fcntl.h"
-#include "kernel/syscall.h"
-#include "kernel/memlayout.h"
-#include "kernel/riscv.h"
+#include "../kernel/fcntl.h"
+#include "../kernel/stat.h"
+#include "../kernel/types.h"
+#include "user.h"
 
 // from FreeBSD.
 int do_rand(unsigned long *ctx) {
@@ -29,7 +24,8 @@ int do_rand(unsigned long *ctx) {
   hi = x / 127773;
   lo = x % 127773;
   x = 16807 * lo - 2836 * hi;
-  if (x < 0) x += 0x7fffffff;
+  if (x < 0)
+    x += 0x7fffffff;
   /* Transform to [0, 0x7ffffffd] range. */
   x--;
   *ctx = x;
@@ -55,7 +51,8 @@ void go(int which_child) {
 
   while (1) {
     iters++;
-    if ((iters % 500) == 0) write(1, which_child ? "B" : "A", 1);
+    if ((iters % 500) == 0)
+      write(1, which_child ? "B" : "A", 1);
     int what = rand() % 23;
     if (what == 1) {
       close(open("grindir/../a", O_CREATE | O_RDWR));
@@ -117,7 +114,8 @@ void go(int which_child) {
     } else if (what == 15) {
       sbrk(6011);
     } else if (what == 16) {
-      if (sbrk(0) > break0) sbrk(-(sbrk(0) - break0));
+      if (sbrk(0) > break0)
+        sbrk(-(sbrk(0) - break0));
     } else if (what == 17) {
       int pid = fork();
       if (pid == 0) {
@@ -153,9 +151,11 @@ void go(int which_child) {
       if (pid == 0) {
         fork();
         fork();
-        if (write(fds[1], "x", 1) != 1) printf("grind: pipe write failed\n");
+        if (write(fds[1], "x", 1) != 1)
+          printf("grind: pipe write failed\n");
         char c;
-        if (read(fds[0], &c, 1) != 1) printf("grind: pipe read failed\n");
+        if (read(fds[0], &c, 1) != 1)
+          printf("grind: pipe read failed\n");
         exit(0);
       } else if (pid < 0) {
         printf("grind: fork failed\n");

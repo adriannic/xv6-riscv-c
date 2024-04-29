@@ -1,10 +1,14 @@
+#pragma once
+
+#include "types.h"
+
 // Format of an ELF executable file
 
-#define ELF_MAGIC 0x464C457FU  // "\x7FELF" in little endian
+#define ELF_MAGIC 0x464C457FU // "\x7FELF" in little endian
 
 // File header
 struct elfhdr {
-  uint magic;  // must equal ELF_MAGIC
+  uint magic; // must equal ELF_MAGIC
   uchar elf[12];
   ushort type;
   ushort machine;

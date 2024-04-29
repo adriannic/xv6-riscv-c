@@ -13,14 +13,11 @@
 // * Only one process at a time can use a buffer,
 //     so do not keep them longer than necessary.
 
-#include "types.h"
+#include "buf.h"
+#include "defs.h"
 #include "param.h"
 #include "spinlock.h"
-#include "sleeplock.h"
-#include "riscv.h"
-#include "defs.h"
-#include "fs.h"
-#include "buf.h"
+#include "types.h"
 
 struct {
   struct spinlock lock;
@@ -97,14 +94,16 @@ struct buf *bread(uint dev, uint blockno) {
 
 // Write b's contents to disk.  Must be locked.
 void bwrite(struct buf *b) {
-  if (!holdingsleep(&b->lock)) panic("bwrite");
+  if (!holdingsleep(&b->lock))
+    panic("bwrite");
   virtio_disk_rw(b, 1);
 }
 
 // Release a locked buffer.
 // Move to the head of the most-recently-used list.
 void brelse(struct buf *b) {
-  if (!holdingsleep(&b->lock)) panic("brelse");
+  if (!holdingsleep(&b->lock))
+    panic("brelse");
 
   releasesleep(&b->lock);
 

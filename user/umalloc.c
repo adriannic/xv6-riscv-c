@@ -1,7 +1,5 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "user/user.h"
-#include "kernel/param.h"
+#include "../kernel/types.h"
+#include "user.h"
 
 // Memory allocator by Kernighan and Ritchie,
 // The C programming Language, 2nd ed.  Section 8.7.
@@ -26,7 +24,8 @@ void free(void *ap) {
 
   bp = (Header *)ap - 1;
   for (p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
-    if (p >= p->s.ptr && (bp > p || bp < p->s.ptr)) break;
+    if (p >= p->s.ptr && (bp > p || bp < p->s.ptr))
+      break;
   if (bp + bp->s.size == p->s.ptr) {
     bp->s.size += p->s.ptr->s.size;
     bp->s.ptr = p->s.ptr->s.ptr;
@@ -44,9 +43,11 @@ static Header *morecore(uint nu) {
   char *p;
   Header *hp;
 
-  if (nu < 4096) nu = 4096;
+  if (nu < 4096)
+    nu = 4096;
   p = sbrk(nu * sizeof(Header));
-  if (p == (char *)-1) return 0;
+  if (p == (char *)-1)
+    return 0;
   hp = (Header *)p;
   hp->s.size = nu;
   free((void *)(hp + 1));
@@ -75,6 +76,7 @@ void *malloc(uint nbytes) {
       return (void *)(p + 1);
     }
     if (p == freep)
-      if ((p = morecore(nunits)) == 0) return 0;
+      if ((p = morecore(nunits)) == 0)
+        return 0;
   }
 }

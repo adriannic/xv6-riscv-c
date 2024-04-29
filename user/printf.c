@@ -1,8 +1,7 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "user/user.h"
-
 #include <stdarg.h>
+
+#include "../kernel/types.h"
+#include "user.h"
 
 static char digits[] = "0123456789ABCDEF";
 
@@ -25,9 +24,11 @@ static void printint(int fd, int xx, int base, int sgn) {
   do {
     buf[i++] = digits[x % base];
   } while ((x /= base) != 0);
-  if (neg) buf[i++] = '-';
+  if (neg)
+    buf[i++] = '-';
 
-  while (--i >= 0) putc(fd, buf[i]);
+  while (--i >= 0)
+    putc(fd, buf[i]);
 }
 
 static void printptr(int fd, uint64 x) {
@@ -63,7 +64,8 @@ void vprintf(int fd, const char *fmt, va_list ap) {
         printptr(fd, va_arg(ap, uint64));
       } else if (c == 's') {
         s = va_arg(ap, char *);
-        if (s == 0) s = "(null)";
+        if (s == 0)
+          s = "(null)";
         while (*s != 0) {
           putc(fd, *s);
           s++;

@@ -1,6 +1,4 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "user/user.h"
+#include "user.h"
 
 char buf[512];
 
@@ -13,7 +11,8 @@ void wc(int fd, char *name) {
   while ((n = read(fd, buf, sizeof(buf))) > 0) {
     for (i = 0; i < n; i++) {
       c++;
-      if (buf[i] == '\n') l++;
+      if (buf[i] == '\n')
+        l++;
       if (strchr(" \r\t\n\v", buf[i]))
         inword = 0;
       else if (!inword) {

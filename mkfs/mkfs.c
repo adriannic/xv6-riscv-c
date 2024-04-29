@@ -1,22 +1,22 @@
+#include <assert.h>
+#include <fcntl.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <assert.h>
+#include <unistd.h>
 
-#define stat xv6_stat  // avoid clash with host struct stat
-#include "kernel/types.h"
+#define stat xv6_stat // avoid clash with host struct stat
 #include "kernel/fs.h"
-#include "kernel/stat.h"
 #include "kernel/param.h"
+#include "kernel/stat.h"
+#include "kernel/types.h"
 
 #ifndef static_assert
-#define static_assert(a, b) \
-  do {                      \
-    switch (0)              \
-    case 0:                 \
-    case (a):;              \
+#define static_assert(a, b)                                                    \
+  do {                                                                         \
+    switch (0)                                                                 \
+    case 0:                                                                    \
+    case (a):;                                                                 \
   } while (0)
 #endif
 
@@ -28,8 +28,8 @@
 int nbitmap = FSSIZE / (BSIZE * 8) + 1;
 int ninodeblocks = NINODES / IPB + 1;
 int nlog = LOGSIZE;
-int nmeta;    // Number of meta blocks (boot, sb, nlog, inode, bitmap)
-int nblocks;  // Number of data blocks
+int nmeta;   // Number of meta blocks (boot, sb, nlog, inode, bitmap)
+int nblocks; // Number of data blocks
 
 int fsfd;
 struct superblock sb;
@@ -83,7 +83,8 @@ int main(int argc, char *argv[]) {
   assert((BSIZE % sizeof(struct dirent)) == 0);
 
   fsfd = open(argv[1], O_RDWR | O_CREAT | O_TRUNC, 0666);
-  if (fsfd < 0) die(argv[1]);
+  if (fsfd < 0)
+    die(argv[1]);
 
   // 1 fs block = 1 disk sector
   nmeta = 2 + nlog + ninodeblocks + nbitmap;
@@ -103,9 +104,10 @@ int main(int argc, char *argv[]) {
       "blocks %d total %d\n",
       nmeta, nlog, ninodeblocks, nbitmap, nblocks, FSSIZE);
 
-  freeblock = nmeta;  // the first free block that we can allocate
+  freeblock = nmeta; // the first free block that we can allocate
 
-  for (i = 0; i < FSSIZE; i++) wsect(i, zeroes);
+  for (i = 0; i < FSSIZE; i++)
+    wsect(i, zeroes);
 
   memset(buf, 0, sizeof(buf));
   memmove(buf, &sb, sizeof(sb));
@@ -134,13 +136,15 @@ int main(int argc, char *argv[]) {
 
     assert(index(shortname, '/') == 0);
 
-    if ((fd = open(argv[i], 0)) < 0) die(argv[i]);
+    if ((fd = open(argv[i], 0)) < 0)
+      die(argv[i]);
 
     // Skip leading _ in name when writing to file system.
     // The binaries are named _rm, _cat, etc. to keep the
     // build operating system from trying to execute them
     // in place of system binaries like rm and cat.
-    if (shortname[0] == '_') shortname += 1;
+    if (shortname[0] == '_')
+      shortname += 1;
 
     inum = ialloc(T_FILE);
 
@@ -149,7 +153,8 @@ int main(int argc, char *argv[]) {
     strncpy(de.name, shortname, DIRSIZ);
     iappend(rootino, &de, sizeof(de));
 
-    while ((cc = read(fd, buf, sizeof(buf))) > 0) iappend(inum, buf, cc);
+    while ((cc = read(fd, buf, sizeof(buf))) > 0)
+      iappend(inum, buf, cc);
 
     close(fd);
   }
@@ -167,8 +172,10 @@ int main(int argc, char *argv[]) {
 }
 
 void wsect(uint sec, void *buf) {
-  if (lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE) die("lseek");
-  if (write(fsfd, buf, BSIZE) != BSIZE) die("write");
+  if (lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE)
+    die("lseek");
+  if (write(fsfd, buf, BSIZE) != BSIZE)
+    die("write");
 }
 
 void winode(uint inum, struct dinode *ip) {
@@ -195,8 +202,10 @@ void rinode(uint inum, struct dinode *ip) {
 }
 
 void rsect(uint sec, void *buf) {
-  if (lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE) die("lseek");
-  if (read(fsfd, buf, BSIZE) != BSIZE) die("read");
+  if (lseek(fsfd, sec * BSIZE, 0) != sec * BSIZE)
+    die("lseek");
+  if (read(fsfd, buf, BSIZE) != BSIZE)
+    die("read");
 }
 
 uint ialloc(ushort type) {

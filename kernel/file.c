@@ -2,16 +2,15 @@
 // Support functions for system calls that involve file descriptors.
 //
 
-#include "types.h"
-#include "riscv.h"
-#include "defs.h"
-#include "param.h"
-#include "fs.h"
-#include "spinlock.h"
-#include "sleeplock.h"
 #include "file.h"
-#include "stat.h"
+
+#include "defs.h"
+#include "fs.h"
+#include "param.h"
 #include "proc.h"
+#include "spinlock.h"
+#include "stat.h"
+#include "types.h"
 
 struct devsw devsw[NDEV];
 struct {
@@ -40,7 +39,8 @@ struct file *filealloc(void) {
 // Increment ref count for file f.
 struct file *filedup(struct file *f) {
   acquire(&ftable.lock);
-  if (f->ref < 1) panic("filedup");
+  if (f->ref < 1)
+    panic("filedup");
   f->ref++;
   release(&ftable.lock);
   return f;
@@ -51,7 +51,8 @@ void fileclose(struct file *f) {
   struct file ff;
 
   acquire(&ftable.lock);
-  if (f->ref < 1) panic("fileclose");
+  if (f->ref < 1)
+    panic("fileclose");
   if (--f->ref > 0) {
     release(&ftable.lock);
     return;
@@ -80,7 +81,8 @@ int filestat(struct file *f, uint64 addr) {
     ilock(f->ip);
     stati(f->ip, &st);
     iunlock(f->ip);
-    if (copyout(p->pagetable, addr, (char *)&st, sizeof(st)) < 0) return -1;
+    if (copyout(p->pagetable, addr, (char *)&st, sizeof(st)) < 0)
+      return -1;
     return 0;
   }
   return -1;
@@ -91,16 +93,19 @@ int filestat(struct file *f, uint64 addr) {
 int fileread(struct file *f, uint64 addr, int n) {
   int r = 0;
 
-  if (f->readable == 0) return -1;
+  if (f->readable == 0)
+    return -1;
 
   if (f->type == FD_PIPE) {
     r = piperead(f->pipe, addr, n);
   } else if (f->type == FD_DEVICE) {
-    if (f->major < 0 || f->major >= NDEV || !devsw[f->major].read) return -1;
+    if (f->major < 0 || f->major >= NDEV || !devsw[f->major].read)
+      return -1;
     r = devsw[f->major].read(1, addr, n);
   } else if (f->type == FD_INODE) {
     ilock(f->ip);
-    if ((r = readi(f->ip, 1, addr, f->off, n)) > 0) f->off += r;
+    if ((r = readi(f->ip, 1, addr, f->off, n)) > 0)
+      f->off += r;
     iunlock(f->ip);
   } else {
     panic("fileread");
@@ -114,12 +119,14 @@ int fileread(struct file *f, uint64 addr, int n) {
 int filewrite(struct file *f, uint64 addr, int n) {
   int r, ret = 0;
 
-  if (f->writable == 0) return -1;
+  if (f->writable == 0)
+    return -1;
 
   if (f->type == FD_PIPE) {
     ret = pipewrite(f->pipe, addr, n);
   } else if (f->type == FD_DEVICE) {
-    if (f->major < 0 || f->major >= NDEV || !devsw[f->major].write) return -1;
+    if (f->major < 0 || f->major >= NDEV || !devsw[f->major].write)
+      return -1;
     ret = devsw[f->major].write(1, addr, n);
   } else if (f->type == FD_INODE) {
     // write a few blocks at a time to avoid exceeding
@@ -132,11 +139,13 @@ int filewrite(struct file *f, uint64 addr, int n) {
     int i = 0;
     while (i < n) {
       int n1 = n - i;
-      if (n1 > max) n1 = max;
+      if (n1 > max)
+        n1 = max;
 
       begin_op();
       ilock(f->ip);
-      if ((r = writei(f->ip, 1, addr + i, f->off, n1)) > 0) f->off += r;
+      if ((r = writei(f->ip, 1, addr + i, f->off, n1)) > 0)
+        f->off += r;
       iunlock(f->ip);
       end_op();
 

@@ -1,13 +1,8 @@
 // init: The initial user-level program
 
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "kernel/spinlock.h"
-#include "kernel/sleeplock.h"
-#include "kernel/fs.h"
-#include "kernel/file.h"
-#include "user/user.h"
-#include "kernel/fcntl.h"
+#include "../kernel/fcntl.h"
+#include "../kernel/file.h"
+#include "user.h"
 
 char *argv[] = {"sh", 0};
 
@@ -18,8 +13,8 @@ int main(void) {
     mknod("console", CONSOLE, 0);
     open("console", O_RDWR);
   }
-  dup(0);  // stdout
-  dup(0);  // stderr
+  dup(0); // stdout
+  dup(0); // stderr
 
   for (;;) {
     printf("init: starting sh\n");

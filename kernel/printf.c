@@ -4,16 +4,9 @@
 
 #include <stdarg.h>
 
-#include "types.h"
-#include "param.h"
-#include "spinlock.h"
-#include "sleeplock.h"
-#include "fs.h"
-#include "file.h"
-#include "memlayout.h"
-#include "riscv.h"
 #include "defs.h"
-#include "proc.h"
+#include "spinlock.h"
+#include "types.h"
 
 volatile int panicked = 0;
 
@@ -40,9 +33,11 @@ static void printint(int xx, int base, int sign) {
     buf[i++] = digits[x % base];
   } while ((x /= base) != 0);
 
-  if (sign) buf[i++] = '-';
+  if (sign)
+    buf[i++] = '-';
 
-  while (--i >= 0) consputc(buf[i]);
+  while (--i >= 0)
+    consputc(buf[i]);
 }
 
 static void printptr(uint64 x) {
@@ -60,9 +55,11 @@ void printf(char *fmt, ...) {
   char *s;
 
   locking = pr.locking;
-  if (locking) acquire(&pr.lock);
+  if (locking)
+    acquire(&pr.lock);
 
-  if (fmt == 0) panic("null fmt");
+  if (fmt == 0)
+    panic("null fmt");
 
   va_start(ap, fmt);
   for (i = 0; (c = fmt[i] & 0xff) != 0; i++) {
@@ -71,34 +68,38 @@ void printf(char *fmt, ...) {
       continue;
     }
     c = fmt[++i] & 0xff;
-    if (c == 0) break;
+    if (c == 0)
+      break;
     switch (c) {
-      case 'd':
-        printint(va_arg(ap, int), 10, 1);
-        break;
-      case 'x':
-        printint(va_arg(ap, int), 16, 1);
-        break;
-      case 'p':
-        printptr(va_arg(ap, uint64));
-        break;
-      case 's':
-        if ((s = va_arg(ap, char *)) == 0) s = "(null)";
-        for (; *s; s++) consputc(*s);
-        break;
-      case '%':
-        consputc('%');
-        break;
-      default:
-        // Print unknown % sequence to draw attention.
-        consputc('%');
-        consputc(c);
-        break;
+    case 'd':
+      printint(va_arg(ap, int), 10, 1);
+      break;
+    case 'x':
+      printint(va_arg(ap, int), 16, 1);
+      break;
+    case 'p':
+      printptr(va_arg(ap, uint64));
+      break;
+    case 's':
+      if ((s = va_arg(ap, char *)) == 0)
+        s = "(null)";
+      for (; *s; s++)
+        consputc(*s);
+      break;
+    case '%':
+      consputc('%');
+      break;
+    default:
+      // Print unknown % sequence to draw attention.
+      consputc('%');
+      consputc(c);
+      break;
     }
   }
   va_end(ap);
 
-  if (locking) release(&pr.lock);
+  if (locking)
+    release(&pr.lock);
 }
 
 void panic(char *s) {
@@ -106,7 +107,7 @@ void panic(char *s) {
   printf("panic: ");
   printf(s);
   printf("\n");
-  panicked = 1;  // freeze uart output from other CPUs
+  panicked = 1; // freeze uart output from other CPUs
   for (;;)
     ;
 }

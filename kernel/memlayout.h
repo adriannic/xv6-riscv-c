@@ -1,3 +1,5 @@
+#pragma once
+
 // Physical memory layout
 
 // qemu -machine virt is set up like this,
@@ -28,7 +30,7 @@
 // core local interruptor (CLINT), which contains the timer.
 #define CLINT 0x2000000L
 #define CLINT_MTIMECMP(hartid) (CLINT + 0x4000 + 8 * (hartid))
-#define CLINT_MTIME (CLINT + 0xBFF8)  // cycles since boot.
+#define CLINT_MTIME (CLINT + 0xBFF8) // cycles since boot.
 
 // qemu puts platform-level interrupt controller (PLIC) here.
 #define PLIC 0x0c000000L

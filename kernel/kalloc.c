@@ -2,12 +2,11 @@
 // kernel stacks, page-table pages,
 // and pipe buffers. Allocates whole 4096-byte pages.
 
-#include "types.h"
-#include "param.h"
-#include "memlayout.h"
-#include "spinlock.h"
-#include "riscv.h"
 #include "defs.h"
+#include "memlayout.h"
+#include "riscv.h"
+#include "spinlock.h"
+#include "types.h"
 
 #define MAXPAGES (PHYSTOP / PGSIZE)
 
@@ -15,8 +14,8 @@ void freerange(void *pa_start, void *pa_end);
 void _freerange(void *pa_start, void *pa_end);
 void _kfree(void *pa);
 
-extern char end[];  // first address after kernel.
-                    // defined by kernel.ld.
+extern char end[]; // first address after kernel.
+                   // defined by kernel.ld.
 
 struct run {
   struct run *next;
@@ -37,13 +36,15 @@ void kinit() {
 void freerange(void *pa_start, void *pa_end) {
   char *p;
   p = (char *)PGROUNDUP((uint64)pa_start);
-  for (; p + PGSIZE <= (char *)pa_end; p += PGSIZE) kfree(p);
+  for (; p + PGSIZE <= (char *)pa_end; p += PGSIZE)
+    kfree(p);
 }
 
 void _freerange(void *pa_start, void *pa_end) {
   char *p;
   p = (char *)PGROUNDUP((uint64)pa_start);
-  for (; p + PGSIZE <= (char *)pa_end; p += PGSIZE) _kfree(p);
+  for (; p + PGSIZE <= (char *)pa_end; p += PGSIZE)
+    _kfree(p);
 }
 
 // Free the page of physical memory pointed at by pa,
@@ -57,7 +58,8 @@ void kfree(void *pa) {
     panic("kfree");
 
   r = &kmem.runs[(uint64)pa / PGSIZE];
-  if (r->ref < 1) panic("kfree: tried to free an unallocated page");
+  if (r->ref < 1)
+    panic("kfree: tried to free an unallocated page");
   if (r->ref > 1) {
     acquire(&kmem.lock);
     r->ref--;
@@ -108,7 +110,7 @@ void *kalloc(void) {
   release(&kmem.lock);
 
   if (r) {
-    memset((char *)((r - kmem.runs) * PGSIZE), 5, PGSIZE);  // fill with junk
+    memset((char *)((r - kmem.runs) * PGSIZE), 5, PGSIZE); // fill with junk
     return (void *)((r - kmem.runs) * PGSIZE);
   }
   return (void *)0;
@@ -120,7 +122,8 @@ void kclone(uint64 pa) {
 
   struct run *r = &kmem.runs[(uint64)pa / PGSIZE];
 
-  if (r->ref < 1) panic("kclone: can't clone unallocated page");
+  if (r->ref < 1)
+    panic("kclone: can't clone unallocated page");
 
   acquire(&kmem.lock);
   r->ref++;

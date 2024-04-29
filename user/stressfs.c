@@ -7,11 +7,8 @@
 //    for (i = 0; i < 40000; i++)
 //      asm volatile("");
 
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "user/user.h"
-#include "kernel/fs.h"
-#include "kernel/fcntl.h"
+#include "../kernel/fcntl.h"
+#include "user.h"
 
 int main(int argc, char *argv[]) {
   int fd, i;
@@ -22,7 +19,8 @@ int main(int argc, char *argv[]) {
   memset(data, 'a', sizeof(data));
 
   for (i = 0; i < 4; i++)
-    if (fork() > 0) break;
+    if (fork() > 0)
+      break;
 
   printf("write %d\n", i);
 
@@ -36,7 +34,8 @@ int main(int argc, char *argv[]) {
   printf("read\n");
 
   fd = open(path, O_RDONLY);
-  for (i = 0; i < 20; i++) read(fd, data, sizeof(data));
+  for (i = 0; i < 20; i++)
+    read(fd, data, sizeof(data));
   close(fd);
 
   wait(0);

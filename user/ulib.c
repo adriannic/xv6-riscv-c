@@ -1,7 +1,7 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "kernel/fcntl.h"
-#include "user/user.h"
+#include "../kernel/fcntl.h"
+#include "../kernel/stat.h"
+#include "../kernel/types.h"
+#include "user.h"
 
 //
 // wrapper so that it's OK if main() does not call exit().
@@ -22,7 +22,8 @@ char *strcpy(char *s, const char *t) {
 }
 
 int strcmp(const char *p, const char *q) {
-  while (*p && *p == *q) p++, q++;
+  while (*p && *p == *q)
+    p++, q++;
   return (uchar)*p - (uchar)*q;
 }
 
@@ -45,7 +46,8 @@ void *memset(void *dst, int c, uint n) {
 
 char *strchr(const char *s, char c) {
   for (; *s; s++)
-    if (*s == c) return (char *)s;
+    if (*s == c)
+      return (char *)s;
   return 0;
 }
 
@@ -55,9 +57,11 @@ char *gets(char *buf, int max) {
 
   for (i = 0; i + 1 < max;) {
     cc = read(0, &c, 1);
-    if (cc < 1) break;
+    if (cc < 1)
+      break;
     buf[i++] = c;
-    if (c == '\n' || c == '\r') break;
+    if (c == '\n' || c == '\r')
+      break;
   }
   buf[i] = '\0';
   return buf;
@@ -68,7 +72,8 @@ int stat(const char *n, struct stat *st) {
   int r;
 
   fd = open(n, O_RDONLY);
-  if (fd < 0) return -1;
+  if (fd < 0)
+    return -1;
   r = fstat(fd, st);
   close(fd);
   return r;
@@ -78,7 +83,8 @@ int atoi(const char *s) {
   int n;
 
   n = 0;
-  while ('0' <= *s && *s <= '9') n = n * 10 + *s++ - '0';
+  while ('0' <= *s && *s <= '9')
+    n = n * 10 + *s++ - '0';
   return n;
 }
 
@@ -89,11 +95,13 @@ void *memmove(void *vdst, const void *vsrc, int n) {
   dst = vdst;
   src = vsrc;
   if (src > dst) {
-    while (n-- > 0) *dst++ = *src++;
+    while (n-- > 0)
+      *dst++ = *src++;
   } else {
     dst += n;
     src += n;
-    while (n-- > 0) *--dst = *--src;
+    while (n-- > 0)
+      *--dst = *--src;
   }
   return vdst;
 }
@@ -118,11 +126,11 @@ int clone(int (*fn)(void *), void *args) {
   extern int _clone(void);
   int tid = _clone();
   switch (tid) {
-    case 0:
-      exit(fn(args));
-    case -1:
-      return -1;
-    default:
-      return tid;
+  case 0:
+    exit(fn(args));
+  case -1:
+    return -1;
+  default:
+    return tid;
   }
 }

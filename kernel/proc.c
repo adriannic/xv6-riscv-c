@@ -1,10 +1,11 @@
-#include "types.h"
-#include "param.h"
+#include "proc.h"
+
+#include "defs.h"
 #include "memlayout.h"
+#include "param.h"
 #include "riscv.h"
 #include "spinlock.h"
-#include "proc.h"
-#include "defs.h"
+#include "types.h"
 
 struct cpu cpus[NCPU];
 
@@ -21,7 +22,7 @@ struct spinlock tid_lock;
 extern void forkret(void);
 static void freetask(struct task *p);
 
-extern char trampoline[];  // trampoline.S
+extern char trampoline[]; // trampoline.S
 
 // helps ensure that wakeups of wait()ing
 // parents are not lost. helps obey the
@@ -37,7 +38,8 @@ void task_mapstacks(pagetable_t kpgtbl) {
 
   for (t = thread; t < &thread[NTASK]; t++) {
     char *pa = kalloc();
-    if (pa == 0) panic("kalloc");
+    if (pa == 0)
+      panic("kalloc");
     uint64 va = KSTACK((int)(t - thread));
     kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
   }
@@ -143,9 +145,11 @@ found:
 // including user pages.
 // t->thread_lock must be held.
 static void freetask(struct task *t) {
-  if (t->trapframe) kfree((void *)t->trapframe);
+  if (t->trapframe)
+    kfree((void *)t->trapframe);
   t->trapframe = 0;
-  if (t->pagetable) thread_freepagetable(t->pagetable, t->sz);
+  if (t->pagetable)
+    thread_freepagetable(t->pagetable, t->sz);
   t->pagetable = 0;
   t->sz = 0;
   t->pid = 0;
@@ -176,7 +180,8 @@ static void freeproc(struct task *p) {
   int pid = p->pid;
   release(&p->thread_lock);
   for (struct task **pe = proc; pe < &proc[NTASK]; pe++) {
-    if (*pe == 0) continue;
+    if (*pe == 0)
+      continue;
 
     struct task *pp = *pe;
     acquire(&pp->thread_lock);
@@ -198,7 +203,8 @@ pagetable_t thread_pagetable(struct task *t) {
 
   // An empty page table.
   pagetable = uvmcreate();
-  if (pagetable == 0) return 0;
+  if (pagetable == 0)
+    return 0;
 
   // map the trampoline code (for system call return)
   // at the highest user virtual address.
@@ -246,9 +252,8 @@ void userinit(void) {
 
   t = alloctask();
   if (allocproc(t) < 0)
-    panic(
-        "userinit: couldn't allocate a spot in the proc table for the init "
-        "process");
+    panic("userinit: couldn't allocate a spot in the proc table for the init "
+          "process");
 
   initproc = t;
 
@@ -258,8 +263,8 @@ void userinit(void) {
   t->sz = PGSIZE;
 
   // prepare for the very first "return" from kernel to user.
-  t->trapframe->epc = 0;      // user program counter
-  t->trapframe->sp = PGSIZE;  // user stack pointer
+  t->trapframe->epc = 0;     // user program counter
+  t->trapframe->sp = PGSIZE; // user stack pointer
 
   safestrcpy(t->name, "initcode", sizeof(t->name));
   t->cwd = namei("/");
@@ -322,7 +327,8 @@ int fork(void) {
 
   // increment reference counts on open file descriptors.
   for (i = 0; i < NOFILE; i++)
-    if (p->ofile[i]) np->ofile[i] = filedup(p->ofile[i]);
+    if (p->ofile[i])
+      np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
@@ -375,7 +381,8 @@ int clone(void) {
   uint64 sp = nt->trapframe->sp;
   if ((pte = walk(nt->pagetable, PGROUNDDOWN(sp), 0)) == 0)
     panic("clone: stack pte should exist");
-  if ((*pte & PTE_V) == 0) panic("clone: stack page not present");
+  if ((*pte & PTE_V) == 0)
+    panic("clone: stack page not present");
   uint64 pa = PTE2PA(*pte);
   uint flags = PTE_FLAGS(*pte);
   char *mem;
@@ -390,7 +397,8 @@ int clone(void) {
 
   // increment reference counts on open file descriptors.
   for (i = 0; i < NOFILE; i++)
-    if (t->ofile[i]) nt->ofile[i] = filedup(t->ofile[i]);
+    if (t->ofile[i])
+      nt->ofile[i] = filedup(t->ofile[i]);
   nt->cwd = idup(t->cwd);
 
   safestrcpy(nt->name, t->name, sizeof(t->name));
@@ -446,7 +454,8 @@ static void killthreads(int pid) {
 void exit(int status) {
   struct task *t = mytask();
 
-  if (t == initproc) panic("init exiting");
+  if (t == initproc)
+    panic("init exiting");
 
   // Close all open files.
   for (int fd = 0; fd < NOFILE; fd++) {
@@ -467,7 +476,8 @@ void exit(int status) {
   release(&t->thread_lock);
 
   // Kill child threads if t is a process.
-  if (is_proc) killthreads(t->pid);
+  if (is_proc)
+    killthreads(t->pid);
 
   acquire(&wait_lock);
 
@@ -482,7 +492,8 @@ void exit(int status) {
   t->xstate = status;
   t->state = ZOMBIE;
   // Free spot in the proc table if t is a process.
-  if (is_proc) freeproc(t);
+  if (is_proc)
+    freeproc(t);
 
   release(&wait_lock);
 
@@ -534,7 +545,7 @@ int wait(uint64 addr) {
     }
 
     // Wait for a child to exit.
-    sleep(p, &wait_lock);  // DOC: wait-sleep
+    sleep(p, &wait_lock); // DOC: wait-sleep
   }
 }
 
@@ -584,10 +595,14 @@ void sched(void) {
   int intena;
   struct task *t = mytask();
 
-  if (!holding(&t->thread_lock)) panic("sched t->thread_lock");
-  if (mycpu()->noff != 1) panic("sched locks");
-  if (t->state == RUNNING) panic("sched running");
-  if (intr_get()) panic("sched interruptible");
+  if (!holding(&t->thread_lock))
+    panic("sched t->thread_lock");
+  if (mycpu()->noff != 1)
+    panic("sched locks");
+  if (t->state == RUNNING)
+    panic("sched running");
+  if (intr_get())
+    panic("sched interruptible");
 
   intena = mycpu()->intena;
   swtch(&t->context, &mycpu()->context);
@@ -634,7 +649,7 @@ void sleep(void *chan, struct spinlock *lk) {
   // (wakeup locks t->thread_lock),
   // so it's okay to release lk.
 
-  acquire(&t->thread_lock);  // DOC: sleeplock1
+  acquire(&t->thread_lock); // DOC: sleeplock1
   release(lk);
 
   // Go to sleep.
@@ -686,7 +701,8 @@ int kill(int pid) {
     }
     release(&p->thread_lock);
   }
-  if (killed) return 0;
+  if (killed)
+    return 0;
   return -1;
 }
 
@@ -756,7 +772,8 @@ void procdump(void) {
   printf("\n");
   printf("pid\ttid\tstate\tname\n");
   for (p = thread; p < &thread[NTASK]; p++) {
-    if (p->state == UNUSED) continue;
+    if (p->state == UNUSED)
+      continue;
     if (p->state >= 0 && p->state < NELEM(states) && states[p->state])
       state = states[p->state];
     else

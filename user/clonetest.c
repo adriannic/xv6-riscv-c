@@ -1,6 +1,4 @@
-#include "../kernel/types.h"
-#include "../kernel/stat.h"
-#include "../user/user.h"
+#include "user.h"
 
 int thread_fn(void *args) {
   int value = *(int *)args;
