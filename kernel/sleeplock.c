@@ -18,7 +18,7 @@ void acquiresleep(struct sleeplock *lk) {
     sleep(lk, &lk->lk);
   }
   lk->locked = 1;
-  lk->pid = mytask()->pid;
+  lk->pid = mythread()->pid;
   release(&lk->lk);
 }
 
@@ -34,7 +34,7 @@ int holdingsleep(struct sleeplock *lk) {
   int r;
 
   acquire(&lk->lk);
-  r = lk->locked && (lk->pid == mytask()->pid);
+  r = lk->locked && (lk->pid == mythread()->pid);
   release(&lk->lk);
   return r;
 }

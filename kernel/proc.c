@@ -9,9 +9,6 @@
 
 struct cpu cpus[NCPU];
 
-struct task *proc[NTASK];
-struct spinlock proc_lock;
-
 struct task thread[NTASK];
 
 struct task *initproc;
@@ -51,7 +48,6 @@ void threadinit(void) {
 
   initlock(&tid_lock, "nexttid");
   initlock(&wait_lock, "wait_lock");
-  initlock(&proc_lock, "proc_lock");
   for (p = thread; p < &thread[NTASK]; p++) {
     initlock(&p->thread_lock, "thread");
     p->state = UNUSED;
@@ -75,13 +71,31 @@ struct cpu *mycpu(void) {
   return c;
 }
 
-// Return the current struct task *, or zero if none.
-struct task *mytask(void) {
+// Return the current thread, or zero if none.
+struct task *mythread(void) {
   push_off();
   struct cpu *c = mycpu();
   struct task *p = c->thread;
   pop_off();
   return p;
+}
+
+// Return the current process. wait_lock and thread_lock must NOT be held.
+struct task *myproc(void) {
+  struct task *t = mythread();
+
+  acquire(&t->thread_lock);
+  // Return early if t is already a process
+  if (t->pid == t->tid) {
+    release(&t->thread_lock);
+    return t;
+  }
+  release(&t->thread_lock);
+  acquire(&wait_lock);
+  // A thread always has it's process as it's parent.
+  t = t->parent;
+  release(&wait_lock);
+  return t;
 }
 
 int alloctid() {
@@ -162,40 +176,6 @@ static void freetask(struct task *t) {
   t->state = UNUSED;
 }
 
-// Finds an empty spot in the proc table and assigns this process to it. Returns
-// 0 if successful, -1 otherwise.
-static int allocproc(struct task *p) {
-  for (struct task **pe = proc; pe < &proc[NTASK]; pe++) {
-    if (*pe == 0) {
-      *pe = p;
-      return 0;
-    }
-  }
-  return -1;
-}
-
-// Frees the process entry in the proc table if it exists.
-// p->thread_lock must be held.
-static void freeproc(struct task *p) {
-  int pid = p->pid;
-  release(&p->thread_lock);
-  for (struct task **pe = proc; pe < &proc[NTASK]; pe++) {
-    if (*pe == 0)
-      continue;
-
-    struct task *pp = *pe;
-    acquire(&pp->thread_lock);
-    if (pp->pid == pid) {
-      release(&pp->thread_lock);
-      *pe = 0;
-      acquire(&p->thread_lock);
-      return;
-    }
-    release(&pp->thread_lock);
-  }
-  acquire(&p->thread_lock);
-}
-
 // Create a user page table for a given thread, with no user memory,
 // but with trampoline and trapframe pages.
 pagetable_t thread_pagetable(struct task *t) {
@@ -251,9 +231,6 @@ void userinit(void) {
   struct task *t;
 
   t = alloctask();
-  if (allocproc(t) < 0)
-    panic("userinit: couldn't allocate a spot in the proc table for the init "
-          "process");
 
   initproc = t;
 
@@ -278,7 +255,7 @@ void userinit(void) {
 // Return 0 on success, -1 on failure.
 int growproc(int n) {
   uint64 sz;
-  struct task *t = mytask();
+  struct task *t = mythread();
 
   sz = t->sz;
   if (n > 0) {
@@ -297,23 +274,16 @@ int growproc(int n) {
 int fork(void) {
   int i, pid;
   struct task *np;
-  struct task *p = mytask();
+  struct task *p = mythread();
 
   // Allocate process.
   if ((np = alloctask()) == 0) {
-    return -1;
-  }
-  // Allocate a spot in the proc table for child.
-  if (allocproc(np) < 0) {
-    freetask(np);
-    release(&np->thread_lock);
     return -1;
   }
 
   // Copy user memory from parent to child.
   if (uvmcopy(p->pagetable, np->pagetable, p->sz) < 0) {
     freetask(np);
-    freeproc(np);
     release(&np->thread_lock);
     return -1;
   }
@@ -338,7 +308,7 @@ int fork(void) {
   release(&np->thread_lock);
 
   acquire(&wait_lock);
-  np->parent = p;
+  np->parent = myproc();
   release(&wait_lock);
 
   acquire(&np->thread_lock);
@@ -353,7 +323,7 @@ int fork(void) {
 int clone(void) {
   int i, tid;
   struct task *nt;
-  struct task *t = mytask();
+  struct task *t = mythread();
 
   // Allocate thread.
   if ((nt = alloctask()) == 0) {
@@ -452,7 +422,7 @@ static void killthreads(int pid) {
 // An exited thread remains in the zombie state
 // until its parent calls wait().
 void exit(int status) {
-  struct task *t = mytask();
+  struct task *t = mythread();
 
   if (t == initproc)
     panic("init exiting");
@@ -491,9 +461,6 @@ void exit(int status) {
 
   t->xstate = status;
   t->state = ZOMBIE;
-  // Free spot in the proc table if t is a process.
-  if (is_proc)
-    freeproc(t);
 
   release(&wait_lock);
 
@@ -507,7 +474,7 @@ void exit(int status) {
 int wait(uint64 addr) {
   struct task *pp;
   int havekids, pid;
-  struct task *p = mytask();
+  struct task *p = myproc();
 
   acquire(&wait_lock);
 
@@ -518,6 +485,11 @@ int wait(uint64 addr) {
       if (pp->parent == p) {
         // make sure the child isn't still in exit() or swtch().
         acquire(&pp->thread_lock);
+        // make sure the child is a process
+        if (pp->pid != pp->tid) {
+          release(&pp->thread_lock);
+          continue;
+        }
 
         havekids = 1;
         if (pp->state == ZOMBIE) {
@@ -546,6 +518,54 @@ int wait(uint64 addr) {
 
     // Wait for a child to exit.
     sleep(p, &wait_lock); // DOC: wait-sleep
+  }
+}
+
+// Wait for a child process to exit and return its tid.
+// Return -1 if this process has no children.
+int join(int tid, uint64 addr) {
+  struct task *tt;
+  int threadfound;
+  struct task *t = mythread();
+
+  acquire(&wait_lock);
+
+  for (;;) {
+    // Scan through table looking for exited children.
+    threadfound = 0;
+    for (tt = thread; tt < &thread[NTASK]; tt++) {
+      acquire(&tt->thread_lock);
+      if (tt->tid != tid) {
+        release(&tt->thread_lock);
+        continue;
+      }
+
+      threadfound = 1;
+      if (tt->state == ZOMBIE) {
+        // Found one.
+        if (addr != 0 && copyout(t->pagetable, addr, (char *)&tt->xstate,
+                                 sizeof(tt->xstate)) < 0) {
+          release(&tt->thread_lock);
+          release(&wait_lock);
+          return -1;
+        }
+        freetask(tt);
+        release(&tt->thread_lock);
+        release(&wait_lock);
+        return tid;
+      }
+      release(&tt->thread_lock);
+      break;
+    }
+
+    // No point waiting if we don't have any children.
+    if (!threadfound || killed(t)) {
+      release(&wait_lock);
+      return -1;
+    }
+
+    // Wait for a child to exit.
+    sleep(t, &wait_lock); // DOC: wait-sleep
   }
 }
 
@@ -593,7 +613,7 @@ void scheduler(void) {
 // there's no task.
 void sched(void) {
   int intena;
-  struct task *t = mytask();
+  struct task *t = mythread();
 
   if (!holding(&t->thread_lock))
     panic("sched t->thread_lock");
@@ -611,7 +631,7 @@ void sched(void) {
 
 // Give up the CPU for one scheduling round.
 void yield(void) {
-  struct task *t = mytask();
+  struct task *t = mythread();
   acquire(&t->thread_lock);
   t->state = RUNNABLE;
   sched();
@@ -624,7 +644,7 @@ void forkret(void) {
   static int first = 1;
 
   // Still holding p->thread_lock from scheduler.
-  release(&mytask()->thread_lock);
+  release(&mythread()->thread_lock);
 
   if (first) {
     // File system initialization must be run in the context of a
@@ -640,7 +660,7 @@ void forkret(void) {
 // Atomically release lock and sleep on chan.
 // Reacquires lock when awakened.
 void sleep(void *chan, struct spinlock *lk) {
-  struct task *t = mytask();
+  struct task *t = mythread();
 
   // Must acquire t->thread_lock in order to
   // change t->state and then call sched.
@@ -672,7 +692,7 @@ void wakeup(void *chan) {
   struct task *t;
 
   for (t = thread; t < &thread[NTASK]; t++) {
-    if (t != mytask()) {
+    if (t != mythread()) {
       acquire(&t->thread_lock);
       if (t->state == SLEEPING && t->chan == chan) {
         t->state = RUNNABLE;
@@ -737,7 +757,7 @@ int killed(struct task *t) {
 // depending on usr_dst.
 // Returns 0 on success, -1 on error.
 int either_copyout(int user_dst, uint64 dst, void *src, uint64 len) {
-  struct task *t = mytask();
+  struct task *t = mythread();
   if (user_dst) {
     return copyout(t->pagetable, dst, src, len);
   } else {
@@ -750,7 +770,7 @@ int either_copyout(int user_dst, uint64 dst, void *src, uint64 len) {
 // depending on usr_src.
 // Returns 0 on success, -1 on error.
 int either_copyin(void *dst, int user_src, uint64 src, uint64 len) {
-  struct task *t = mytask();
+  struct task *t = mythread();
   if (user_src) {
     return copyin(t->pagetable, dst, src, len);
   } else {

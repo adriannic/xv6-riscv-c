@@ -23,3 +23,4 @@
 #define SYS_mkdir 20
 #define SYS_close 21
 #define SYS__clone 22
+#define SYS_join 23

@@ -24,7 +24,7 @@ int exec(char *path, char **argv) {
   struct inode *ip;
   struct proghdr ph;
   pagetable_t pagetable = 0, oldpagetable;
-  struct task *p = mytask();
+  struct task *p = mythread();
 
   begin_op();
 
@@ -68,7 +68,7 @@ int exec(char *path, char **argv) {
   end_op();
   ip = 0;
 
-  p = mytask();
+  p = mythread();
   uint64 oldsz = p->sz;
 
   // Allocate two pages at the next page boundary.

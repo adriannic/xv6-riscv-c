@@ -67,7 +67,7 @@ void pipeclose(struct pipe *pi, int writable) {
 
 int pipewrite(struct pipe *pi, uint64 addr, int n) {
   int i = 0;
-  struct task *pr = mytask();
+  struct task *pr = mythread();
 
   acquire(&pi->lock);
   while (i < n) {
@@ -94,7 +94,7 @@ int pipewrite(struct pipe *pi, uint64 addr, int n) {
 
 int piperead(struct pipe *pi, uint64 addr, int n) {
   int i;
-  struct task *pr = mytask();
+  struct task *pr = mythread();
   char ch;
 
   acquire(&pi->lock);

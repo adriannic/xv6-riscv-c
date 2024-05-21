@@ -34,7 +34,7 @@ void usertrap(void) {
   // since we're now in the kernel.
   w_stvec((uint64)kernelvec);
 
-  struct task *p = mytask();
+  struct task *p = mythread();
 
   // save user program counter.
   p->trapframe->epc = r_sepc();
@@ -76,7 +76,7 @@ void usertrap(void) {
 // return to user space
 //
 void usertrapret(void) {
-  struct task *p = mytask();
+  struct task *p = mythread();
 
   // we're about to switch the destination of traps from
   // kerneltrap() to usertrap(), so turn off interrupts until
@@ -136,7 +136,7 @@ void kerneltrap() {
   }
 
   // give up the CPU if this is a timer interrupt.
-  if (which_dev == 2 && mytask() != 0 && mytask()->state == RUNNING)
+  if (which_dev == 2 && mythread() != 0 && mythread()->state == RUNNING)
     yield();
 
   // the yield() may have caused some traps to occur,

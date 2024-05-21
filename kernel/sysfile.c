@@ -21,7 +21,7 @@ static int argfd(int n, int *pfd, struct file **pf) {
   struct file *f;
 
   argint(n, &fd);
-  if (fd < 0 || fd >= NOFILE || (f = mytask()->ofile[fd]) == 0)
+  if (fd < 0 || fd >= NOFILE || (f = mythread()->ofile[fd]) == 0)
     return -1;
   if (pfd)
     *pfd = fd;
@@ -34,7 +34,7 @@ static int argfd(int n, int *pfd, struct file **pf) {
 // Takes over file reference from caller on success.
 static int fdalloc(struct file *f) {
   int fd;
-  struct task *p = mytask();
+  struct task *p = mythread();
 
   for (fd = 0; fd < NOFILE; fd++) {
     if (p->ofile[fd] == 0) {
@@ -88,7 +88,7 @@ uint64 sys_close(void) {
 
   if (argfd(0, &fd, &f) < 0)
     return -1;
-  mytask()->ofile[fd] = 0;
+  mythread()->ofile[fd] = 0;
   fileclose(f);
   return 0;
 }
@@ -379,7 +379,7 @@ uint64 sys_mknod(void) {
 uint64 sys_chdir(void) {
   char path[MAXPATH];
   struct inode *ip;
-  struct task *p = mytask();
+  struct task *p = mythread();
 
   begin_op();
   if (argstr(0, path, MAXPATH) < 0 || (ip = namei(path)) == 0) {
@@ -444,7 +444,7 @@ uint64 sys_pipe(void) {
   uint64 fdarray; // user pointer to array of two integers
   struct file *rf, *wf;
   int fd0, fd1;
-  struct task *p = mytask();
+  struct task *p = mythread();
 
   argaddr(0, &fdarray);
   if (pipealloc(&rf, &wf) < 0)

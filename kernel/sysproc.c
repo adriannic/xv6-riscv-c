@@ -9,7 +9,7 @@ uint64 sys_exit(void) {
   return 0; // not reached
 }
 
-uint64 sys_getpid(void) { return mytask()->pid; }
+uint64 sys_getpid(void) { return mythread()->pid; }
 
 uint64 sys_fork(void) { return fork(); }
 
@@ -19,12 +19,20 @@ uint64 sys_wait(void) {
   return wait(p);
 }
 
+uint64 sys_join(void) {
+  int tid;
+  uint64 p;
+  argint(0, &tid);
+  argaddr(1, &p);
+  return join(tid, p);
+}
+
 uint64 sys_sbrk(void) {
   uint64 addr;
   int n;
 
   argint(0, &n);
-  addr = mytask()->sz;
+  addr = mythread()->sz;
   if (growproc(n) < 0)
     return -1;
   return addr;
@@ -38,7 +46,7 @@ uint64 sys_sleep(void) {
   acquire(&tickslock);
   ticks0 = ticks;
   while (ticks - ticks0 < n) {
-    if (killed(mytask())) {
+    if (killed(mythread())) {
       release(&tickslock);
       return -1;
     }
