@@ -1,6 +1,6 @@
-#include "../kernel/fs.h"
-#include "../kernel/stat.h"
-#include "user.h"
+#include "kernel/fs.h"
+#include "kernel/stat.h"
+#include "user/user.h"
 
 char *fmtname(char *path) {
   static char buf[DIRSIZ + 1];

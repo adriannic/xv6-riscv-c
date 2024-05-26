@@ -1,7 +1,7 @@
 // Shell.
 
-#include "../kernel/fcntl.h"
-#include "user.h"
+#include "kernel/fcntl.h"
+#include "user/user.h"
 
 // Parsed command representation
 #define EXEC 1

@@ -1,10 +1,10 @@
-#include "../kernel/fcntl.h"
-#include "../kernel/fs.h"
-#include "../kernel/memlayout.h"
-#include "../kernel/param.h"
-#include "../kernel/riscv.h"
-#include "../kernel/types.h"
-#include "user.h"
+#include "kernel/fcntl.h"
+#include "kernel/fs.h"
+#include "kernel/memlayout.h"
+#include "kernel/param.h"
+#include "kernel/riscv.h"
+#include "kernel/types.h"
+#include "user/user.h"
 
 //
 // Tests xv6 system calls.  usertests without arguments runs them all
@@ -2230,7 +2230,6 @@ void bigargtest(char *s) {
 // answer: balloc panics, so this test is not useful.
 void fsfull() {
   int nfiles;
-  int fsblocks = 0;
 
   printf("fsfull test\n");
 
@@ -2254,7 +2253,6 @@ void fsfull() {
       if (cc < BSIZE)
         break;
       total += cc;
-      fsblocks++;
     }
     printf("wrote %d bytes\n", total);
     close(fd);

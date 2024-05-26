@@ -784,8 +784,8 @@ int either_copyin(void *dst, int user_src, uint64 src, uint64 len) {
 // No lock to avoid wedging a stuck machine further.
 void procdump(void) {
   static char *states[] = {
-      [UNUSED] "unused",   [USED] "used",      [SLEEPING] "sleep ",
-      [RUNNABLE] "runble", [RUNNING] "run   ", [ZOMBIE] "zombie"};
+      [UNUSED] = "unused",   [USED] = "used",      [SLEEPING] = "sleep ",
+      [RUNNABLE] = "runble", [RUNNING] = "run   ", [ZOMBIE] = "zombie"};
   struct task *p;
   char *state;
 

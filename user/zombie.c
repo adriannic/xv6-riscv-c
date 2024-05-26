@@ -1,7 +1,7 @@
 // Create a zombie process that
 // must be reparented at exit.
 
-#include "user.h"
+#include "user/user.h"
 
 int main(void) {
   if (fork() > 0)
