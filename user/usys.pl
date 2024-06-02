@@ -38,3 +38,5 @@ entry("sleep");
 entry("uptime");
 entry("_clone");
 entry("join");
+entry("nap");
+entry("rouse");

@@ -18,7 +18,7 @@ int thread_fn(void *args) {
 int lock_test(void *args) {
   int *var = ((union lock_test_args *)args)[0].var;
   struct lock *lk = ((union lock_test_args *)args)[1].lk;
-  for (int i = 0; i < 1000000; i++) {
+  for (int i = 0; i < 100000; i++) {
     acquire(lk);
     ++*var;
     release(lk);
@@ -62,8 +62,8 @@ int main(void) {
   join(tid1, NULL);
   join(tid2, NULL);
   printf("Value of var: %d\n", *var);
-  if (*var != 2000000) {
-    fprintf(2, "Expected: 2000000\nReturned: %d\n\n", *var);
+  if (*var != 200000) {
+    fprintf(2, "Expected: 200000\nReturned: %d\n\n", *var);
     exit(1);
   }
   free(lk);

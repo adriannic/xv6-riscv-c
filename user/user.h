@@ -32,6 +32,8 @@ char *sbrk(int);
 int sleep(int);
 int uptime(void);
 int join(int, int *);
+int nap();
+int rouse();
 
 // ulib.c
 int stat(const char *, struct stat *);

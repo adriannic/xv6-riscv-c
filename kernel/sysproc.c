@@ -75,3 +75,11 @@ uint64 sys_uptime(void) {
 }
 
 uint64 sys_clone(void) { return clone(); }
+uint64 sys_nap(void) {
+  nap();
+  return 0;
+}
+uint64 sys_rouse(void) {
+  rouse();
+  return 0;
+}

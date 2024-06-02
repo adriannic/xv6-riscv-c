@@ -307,8 +307,10 @@ int fork(void) {
 
   release(&np->thread_lock);
 
+  struct task *parent = myproc();
+
   acquire(&wait_lock);
-  np->parent = myproc();
+  np->parent = parent;
   release(&wait_lock);
 
   acquire(&np->thread_lock);
@@ -684,6 +686,32 @@ void sleep(void *chan, struct spinlock *lk) {
   // Reacquire original lock.
   release(&t->thread_lock);
   acquire(lk);
+}
+
+// Waits until a lock is released.
+// Must not hold t->thread_lock.
+void nap(void) {
+  struct task *t = mythread();
+  struct task *p = myproc();
+
+  acquire(&t->thread_lock); // DOC: sleeplock1
+
+  // Go to sleep.
+  t->chan = p;
+  t->state = SLEEPING;
+
+  sched();
+
+  // Tidy up.
+  t->chan = 0;
+  release(&t->thread_lock);
+}
+
+// Wake up all threads waiting for a lock.
+// Must be called without any t->thread_lock.
+void rouse(void) {
+  struct task *p = myproc();
+  wakeup(p);
 }
 
 // Wake up all threads sleeping on chan.

@@ -3,7 +3,6 @@
 #include "kernel/types.h"
 #include "user/user.h"
 
-
 //
 // wrapper so that it's OK if main() does not call exit().
 //
@@ -140,7 +139,7 @@ int clone(int (*fn)(void *), void *args) {
 
 void acquire(struct lock *lk) {
   while (__sync_lock_test_and_set(&lk->locked, 1) != 0)
-    ;
+    nap();
 
   __sync_synchronize();
 }
@@ -149,4 +148,5 @@ void release(struct lock *lk) {
   __sync_synchronize();
 
   __sync_lock_release(&lk->locked);
+  rouse();
 }

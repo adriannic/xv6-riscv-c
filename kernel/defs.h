@@ -106,6 +106,8 @@ void threadinit(void);
 void scheduler(void) __attribute__((noreturn));
 void sched(void);
 void sleep(void *, struct spinlock *);
+void nap(void);
+void rouse(void);
 void userinit(void);
 int wait(uint64);
 int join(int, uint64);

@@ -24,3 +24,5 @@
 #define SYS_close 21
 #define SYS__clone 22
 #define SYS_join 23
+#define SYS_nap 24
+#define SYS_rouse 25
