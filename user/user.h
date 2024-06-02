@@ -2,7 +2,12 @@
 
 #include "kernel/types.h"
 
+#define NULL (void *)0
+
 struct stat;
+struct lock {
+  int locked;
+};
 
 // system calls
 int fork(void);
@@ -45,3 +50,5 @@ int atoi(const char *);
 int memcmp(const void *, const void *, uint);
 void *memcpy(void *, const void *, uint);
 int clone(int (*)(void *), void *);
+void acquire(struct lock *);
+void release(struct lock *);
