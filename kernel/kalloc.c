@@ -116,7 +116,7 @@ void *kalloc(void) {
   return (void *)0;
 }
 
-void kclone(uint64 pa) {
+uint64 kclone(uint64 pa) {
   if (((uint64)pa % PGSIZE) != 0 || (char *)pa < end || (uint64)pa >= PHYSTOP)
     panic("kclone");
 
@@ -128,4 +128,6 @@ void kclone(uint64 pa) {
   acquire(&kmem.lock);
   r->ref++;
   release(&kmem.lock);
+
+  return pa;
 }

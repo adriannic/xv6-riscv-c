@@ -300,31 +300,34 @@ err:
   return -1;
 }
 
-// If from is greater than to, unmaps that section from the new pagetable.
-// Else it maps the entries of old in the range provided in the new pagetable.
-// Returns 0 if successful, -1 otherwise.
-// Undos the changes if an error occurs.
-int uvmclone(pagetable_t old, pagetable_t new, uint64 from, uint64 to) {
-  if (from > to) {
-    uvmunmap(new, PGROUNDUP(to), (PGROUNDUP(from) - PGROUNDUP(to)) / PGSIZE, 1);
-    return 0;
-  }
-
+// Given a parent process's page table, clone
+// its memory into a child's page table.
+// returns 0 on success, -1 on failure.
+int uvmclone(pagetable_t old, pagetable_t new, uint64 sz, uint64 sp) {
   pte_t *pte;
   uint64 pa, i;
   uint flags;
 
-  for (i = PGROUNDUP(from); i < to; i += PGSIZE) {
+  for (i = 0; i < sz; i += PGSIZE) {
     if ((pte = walk(old, i, 0)) == 0)
       panic("uvmclone: pte should exist");
     if ((*pte & PTE_V) == 0)
       panic("uvmclone: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    kclone(pa);
-    if (mappages(new, i, PGSIZE, pa, flags) != 0) {
-      kfree((void *)pa);
-      uvmunmap(new, PGROUNDUP(from), (i - PGROUNDUP(from)) / PGSIZE, 1);
+    char *mem;
+    if (i == PGROUNDDOWN(sp)) {
+      if ((mem = kalloc()) == 0) {
+        uvmunmap(new, 0, i / PGSIZE, 1);
+        return -1;
+      }
+      memmove(mem, (char *)pa, PGSIZE);
+    } else {
+      mem = (char *)kclone(pa);
+    }
+    if (mappages(new, i, PGSIZE, (uint64)mem, flags) != 0) {
+      kfree((void *)mem);
+      uvmunmap(new, 0, i / PGSIZE, 1);
       return -1;
     }
   }

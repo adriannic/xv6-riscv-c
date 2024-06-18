@@ -333,7 +333,7 @@ int clone(void) {
   }
 
   // Clone user memory from parent to child.
-  if (uvmclone(t->pagetable, nt->pagetable, 0, t->sz) < 0) {
+  if (uvmclone(t->pagetable, nt->pagetable, t->sz, t->trapframe->sp) < 0) {
     freetask(nt);
     release(&nt->thread_lock);
     return -1;
@@ -347,25 +347,6 @@ int clone(void) {
 
   // Cause clone to return 0 in the child.
   nt->trapframe->a0 = 0;
-
-  // Allocate a page for the child's stack
-  pte_t *pte;
-  uint64 sp = nt->trapframe->sp;
-  if ((pte = walk(nt->pagetable, PGROUNDDOWN(sp), 0)) == 0)
-    panic("clone: stack pte should exist");
-  if ((*pte & PTE_V) == 0)
-    panic("clone: stack page not present");
-  uint64 pa = PTE2PA(*pte);
-  uint flags = PTE_FLAGS(*pte);
-  char *mem;
-  if ((mem = kalloc()) == 0) {
-    freetask(nt);
-    release(&nt->thread_lock);
-    return -1;
-  }
-  memmove(mem, (char *)pa, PGSIZE);
-  kfree((void *)pa);
-  *pte = PA2PTE(mem) | flags | PTE_V;
 
   // increment reference counts on open file descriptors.
   for (i = 0; i < NOFILE; i++)
